@@ -1,4 +1,4 @@
-void app_main() {}/**
+/**
  * @file    main.c
  * @brief   ESP32-C3 PX4 actuator controller.
  *
