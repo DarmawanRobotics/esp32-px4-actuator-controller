@@ -26,6 +26,8 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 
+#include "driver/gpio.h"   /* GPIO_NUM_* pin macros */
+
 #include "pwm_read.h"
 #include "pwm_out.h"
 #include "encoder_read.h"
