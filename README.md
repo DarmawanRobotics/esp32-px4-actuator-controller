@@ -125,7 +125,7 @@ old data is discarded and defaults are applied automatically.
 ├── lib/                        generic, reusable drivers
 │   ├── pwm_read/               RC-PWM input capture (mode bits)
 │   ├── pwm_out/                RC-PWM ESC output
-│   ├── encoder_read/           PCNT-based RPM measurement
+│   ├── encoder_read/           GPIO interrupt-based RPM measurement
 │   └── pid/                    generic PID controller
 ├── partitions.csv
 ├── platformio.ini
@@ -163,7 +163,7 @@ All wiring and behaviour constants are at the top of `src/main.c`:
 | `ESC_MIN_US`/`ESC_MAX_US` | ESC pulse range                    | 1000–2000 us |
 | `AP_SSID` / `AP_PASSWORD` | WiFi access point credentials      | see source  |
 
-Default PID gains and setpoints live in `lib/config_store/config_store.c`
+Default PID gains and setpoints live in `src/config_store.c`
 (`load_defaults`). They only apply on first boot or after *Restore defaults*;
 after that the stored values are used.
 
@@ -174,7 +174,7 @@ after that the stored values are used.
 PlatformIO (ESP-IDF framework, ESP32-C3):
 
 ```bash
-pio run                # build
+pio run                   # build
 pio run --target upload   # flash
 pio device monitor        # serial log @ 115200
 ```
@@ -183,8 +183,9 @@ pio device monitor        # serial log @ 115200
 
 ## Notes
 
-- The encoder uses the PCNT peripheral and counts rising edges only; set
+- The encoder uses GPIO rising edge interrupt and counts rising edges only; set
   `ENCODER_SLOTS_PER_REV` to match your disc for correct RPM.
+  Note: ESP32-C3 does not have hardware PCNT, so GPIO ISR is used instead.
 - The PID output is the ESC pulse width directly, clamped to the ESC range,
   with conditional-integration anti-windup.
 - If your ESC needs a different pulse range, adjust `ESC_MIN_US` / `ESC_MAX_US`

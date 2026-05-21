@@ -1,6 +1,7 @@
-gi# Encoder Read Library for ESP32
+# Encoder Read Library for ESP32
 
-Generic RPM measurement library using the ESP-IDF v5 PCNT (Pulse Counter) driver.
+Generic RPM measurement library using GPIO interrupt + esp_timer.
+Designed as a drop-in for ESP32 variants without hardware PCNT (e.g. ESP32-C3).
 
 Designed for:
 - Slotted disc encoders
@@ -8,19 +9,18 @@ Designed for:
 - Hall-effect sensors
 - Motor RPM feedback systems
 
-The PCNT peripheral counts pulses in hardware with minimal CPU usage.
+Counts rising edges via GPIO ISR with minimal CPU overhead.
 
 ---
 
 ## Features
 
-- Hardware pulse counting using PCNT
-- Low CPU overhead
+- GPIO interrupt-based pulse counting
+- Compatible with all ESP32 variants including ESP32-C3
 - RPM calculation
-- Glitch filter support
 - Configurable slots-per-revolution
 - Simple API
-- ESP-IDF v5 compatible
+- ESP-IDF v5/v6 compatible
 
 ---
 
@@ -113,14 +113,16 @@ Useful for:
 
 ## RPM Equation
 
-:contentReference[oaicite:0]{index=0}
+```
+RPM = (pulses / slots_per_rev) / dt_seconds * 60
+```
 
 ---
 
 ## Notes
 
-- Uses ESP-IDF PCNT driver
+- Uses GPIO rising edge interrupt (POSEDGE)
+- No hardware PCNT required, works on ESP32-C3
 - Counts rising edges only
-- Includes hardware glitch filtering
 - Call `encoder_read_rpm()` periodically for stable readings
 - Designed for single-channel encoder input
