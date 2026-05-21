@@ -3,3 +3,10 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+
+# Ignore build files
+build/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
