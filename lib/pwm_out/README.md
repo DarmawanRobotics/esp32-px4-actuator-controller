@@ -1,6 +1,6 @@
-# Motor Drive Library for ESP32
+# PWM Out Library for ESP32
 
-RC PWM motor / ESC output driver using ESP-IDF LEDC.
+RC PWM output driver using ESP-IDF LEDC.
 
 Generates standard servo-style PWM signals:
 
@@ -12,8 +12,9 @@ Generates standard servo-style PWM signals:
 Suitable for:
 
 - RC ESC
-- PX4 PWM AUX style outputs
-- Servo-compatible motor drivers
+- PX4 PWM AUX outputs
+- Servos
+- PWM actuators
 
 ---
 
@@ -33,9 +34,9 @@ Suitable for:
 
 ```text
 lib/
-└── motor_drive/
-    ├── motor_drive.h
-    ├── motor_drive.c
+└── pwm_out/
+    ├── pwm_out.h
+    ├── pwm_out.c
     └── README.md
 ```
 
@@ -44,21 +45,21 @@ lib/
 ## Example
 
 ```c
-#include "motor_drive.h"
+#include "pwm_out.h"
 
 void app_main(void)
 {
-    motor_drive_init(GPIO_NUM_4);
+    pwm_out_init(GPIO_NUM_4);
 
     while (1) {
 
-        motor_drive_write_us(1000);
+        pwm_out_write_us(1000);
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        motor_drive_write_us(1500);
+        pwm_out_write_us(1500);
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        motor_drive_write_us(2000);
+        pwm_out_write_us(2000);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
@@ -71,7 +72,7 @@ void app_main(void)
 ### Initialize Output
 
 ```c
-void motor_drive_init(int gpio);
+void pwm_out_init(int gpio);
 ```
 
 ---
@@ -79,7 +80,7 @@ void motor_drive_init(int gpio);
 ### Write PWM Pulse
 
 ```c
-void motor_drive_write_us(uint16_t pulse_us);
+void pwm_out_write_us(uint16_t pulse_us);
 ```
 
 Valid range:
@@ -95,10 +96,10 @@ Valid range:
 ### Stop Output
 
 ```c
-void motor_drive_stop(void);
+void pwm_out_stop(void);
 ```
 
-Sends minimum throttle signal.
+Sends minimum PWM signal.
 
 ---
 
@@ -107,4 +108,4 @@ Sends minimum throttle signal.
 - Uses ESP-IDF LEDC driver
 - Single channel output
 - Servo-style PWM signal
-- Designed for RC ESC systems
+- Designed for RC PWM systems

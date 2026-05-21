@@ -1,6 +1,6 @@
 /**
- * @file    motor_drive.h
- * @brief   RC PWM motor / ESC output driver using ESP-IDF LEDC.
+ * @file    pwm_out.h
+ * @brief   RC PWM output driver using ESP-IDF LEDC.
  *
  * Generates standard servo-style PWM signals:
  * - 50 Hz update rate
@@ -10,11 +10,12 @@
  *
  * Suitable for:
  * - RC ESC
- * - PX4 PWM AUX output style
- * - Servo-compatible motor drivers
+ * - PX4 PWM AUX outputs
+ * - Servos
+ * - PWM actuators
  */
-#ifndef MOTOR_DRIVE_H
-#define MOTOR_DRIVE_H
+#ifndef PWM_OUT_H
+#define PWM_OUT_H
 
 #include <stdint.h>
 
@@ -23,16 +24,16 @@ extern "C" {
 #endif
 
 /**
- * @brief Initialize RC PWM output.
+ * @brief Initialize PWM output.
  *
- * Configures one LEDC channel for standard 50 Hz RC PWM output.
+ * Configures one LEDC channel for standard RC PWM output.
  *
  * @param gpio Output GPIO pin.
  */
-void motor_drive_init(int gpio);
+void pwm_out_init(int gpio);
 
 /**
- * @brief Write RC PWM pulse width.
+ * @brief Write PWM pulse width.
  *
  * Valid range:
  * - 1000 us = minimum
@@ -43,17 +44,17 @@ void motor_drive_init(int gpio);
  *
  * @param pulse_us Pulse width in microseconds.
  */
-void motor_drive_write_us(uint16_t pulse_us);
+void pwm_out_write_us(uint16_t pulse_us);
 
 /**
  * @brief Stop / disarm output.
  *
- * Sends minimum throttle signal (1000 us).
+ * Sends minimum PWM signal (1000 us).
  */
-void motor_drive_stop(void);
+void pwm_out_stop(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* MOTOR_DRIVE_H */
+#endif /* PWM_OUT_H */
