@@ -1,80 +1,66 @@
 /**
  * @file    encoder_read.c
- * @brief   RPM measurement via the ESP-IDF v5 pulse-counter (PCNT) driver.
- *          See encoder_read.h.
+ * @brief   RPM measurement via GPIO interrupt + esp_timer.
+ *          Drop-in replacement for the PCNT-based implementation.
+ *          ESP32-C3 does not have a hardware PCNT peripheral, so we count
+ *          rising edges in a GPIO ISR and snapshot the counter periodically.
  */
 #include "encoder_read.h"
 
-#include "driver/pulse_cnt.h"
+#include "driver/gpio.h"
+#include "esp_timer.h"
+#include "esp_attr.h"
 #include "esp_log.h"
+
+#include <stdint.h>
 
 static const char *TAG = "encoder_read";
 
-/* Counter limits: wide enough not to overflow within one sample window. */
-#define PCNT_HIGH_LIMIT   10000
-#define PCNT_LOW_LIMIT   (-10000)
-#define GLITCH_FILTER_NS  1000   /* reject pulses shorter than 1 us */
+static volatile uint32_t s_pulse_count  = 0;
+static int               s_slots_per_rev = 1;
+static int               s_gpio          = -1;
 
-static pcnt_unit_handle_t    s_unit;
-static pcnt_channel_handle_t s_channel;
-static int                   s_slots_per_rev = 1;
+static void IRAM_ATTR gpio_isr_handler(void *arg)
+{
+    s_pulse_count++;
+}
 
 void encoder_read_init(int gpio, int slots_per_rev)
 {
+    s_gpio          = gpio;
     s_slots_per_rev = (slots_per_rev > 0) ? slots_per_rev : 1;
+    s_pulse_count   = 0;
 
-    const pcnt_unit_config_t unit_cfg = {
-        .high_limit = PCNT_HIGH_LIMIT,
-        .low_limit  = PCNT_LOW_LIMIT,
+    const gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << gpio),
+        .mode         = GPIO_MODE_INPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_ENABLE,
+        .intr_type    = GPIO_INTR_POSEDGE,   /* count rising edges only */
     };
-    ESP_ERROR_CHECK(pcnt_new_unit(&unit_cfg, &s_unit));
+    gpio_config(&io_conf);
 
-    const pcnt_glitch_filter_config_t filter_cfg = {
-        .max_glitch_ns = GLITCH_FILTER_NS,
-    };
-    ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(s_unit, &filter_cfg));
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add(gpio, gpio_isr_handler, NULL);
 
-    const pcnt_chan_config_t chan_cfg = {
-        .edge_gpio_num  = gpio,
-        .level_gpio_num = -1,
-    };
-    ESP_ERROR_CHECK(pcnt_new_channel(s_unit, &chan_cfg, &s_channel));
-
-    /* Count rising edges; ignore falling edges. */
-    ESP_ERROR_CHECK(pcnt_channel_set_edge_action(
-        s_channel,
-        PCNT_CHANNEL_EDGE_ACTION_INCREASE,
-        PCNT_CHANNEL_EDGE_ACTION_HOLD));
-
-    ESP_ERROR_CHECK(pcnt_unit_enable(s_unit));
-    ESP_ERROR_CHECK(pcnt_unit_clear_count(s_unit));
-    ESP_ERROR_CHECK(pcnt_unit_start(s_unit));
-
-    ESP_LOGI(TAG, "PCNT ready: GPIO%d, %d slots/rev", gpio, s_slots_per_rev);
+    ESP_LOGI(TAG, "encoder ready: GPIO%d, %d slots/rev (GPIO ISR mode)",
+             gpio, s_slots_per_rev);
 }
 
 int encoder_read_raw_count(void)
 {
-    int count = 0;
-    if (s_unit != NULL) {
-        pcnt_unit_get_count(s_unit, &count);
-    }
-    return count;
+    return (int)s_pulse_count;
 }
 
 float encoder_read_rpm(float dt_seconds)
 {
-    if (s_unit == NULL || dt_seconds <= 0.0f) {
+    if (s_gpio < 0 || dt_seconds <= 0.0f) {
         return 0.0f;
     }
 
-    int pulses = 0;
-    pcnt_unit_get_count(s_unit, &pulses);
-    pcnt_unit_clear_count(s_unit);
-
-    if (pulses < 0) {
-        pulses = -pulses;
-    }
+    /* Atomically snapshot and reset the counter. */
+    uint32_t pulses = s_pulse_count;
+    s_pulse_count   = 0;
 
     const float revolutions = (float)pulses / (float)s_slots_per_rev;
     return (revolutions / dt_seconds) * 60.0f;
